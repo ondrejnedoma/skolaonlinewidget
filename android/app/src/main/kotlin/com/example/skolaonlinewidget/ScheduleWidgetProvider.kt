@@ -277,8 +277,10 @@ class ScheduleRemoteViewsFactory(private val context: Context) : RemoteViewsServ
             if (lesson.isCancelled) {
                 views.setInt(R.id.lesson_subject, "setPaintFlags", 
                     android.graphics.Paint.STRIKE_THRU_TEXT_FLAG or android.graphics.Paint.ANTI_ALIAS_FLAG)
+                views.setTextColor(R.id.lesson_subject, android.graphics.Color.RED)
             } else {
                 views.setInt(R.id.lesson_subject, "setPaintFlags", android.graphics.Paint.ANTI_ALIAS_FLAG)
+                views.setTextColor(R.id.lesson_subject, android.graphics.Color.WHITE)
             }
         }
         

@@ -24,6 +24,11 @@ class AccessTokenService {
       );
       final data = json.decode(response.body);
       if (response.statusCode == 200 && data['access_token'] is String) {
+        // Save the new refresh token if provided
+        final newRefreshToken = data['refresh_token'];
+        if (newRefreshToken is String) {
+          await prefs.setString('refresh_token', newRefreshToken);
+        }
         return data['access_token'] as String;
       }
       return null;

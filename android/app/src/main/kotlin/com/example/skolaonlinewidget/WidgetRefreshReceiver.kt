@@ -37,7 +37,7 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         }
         
         try {
-            val accessToken = getAccessToken(refreshToken)
+            val accessToken = getAccessToken(context, refreshToken)
             if (accessToken == null) {
                 setError(context, "Chyba přihlášení")
                 return
@@ -96,29 +96,15 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             val dateStr = day.optString("date")
             val schedules = day.optJSONArray("schedules") ?: continue
             
-            // Deduplicate lessons - prefer SUPLOVANI over SUPLOVANA
-            val lessonsBySlot = mutableMapOf<String, JSONObject>()
+            // Collect all lessons
+            val allLessons = mutableListOf<JSONObject>()
             for (j in 0 until schedules.length()) {
                 val schedule = schedules.getJSONObject(j)
-                val lessonFrom = schedule.optString("lessonIdFrom", "")
-                val lessonTo = schedule.optString("lessonIdTo", "")
-                val hourType = schedule.optJSONObject("hourType")
-                val hourTypeId = hourType?.optString("id", "") ?: ""
-                
-                val slotKey = "$lessonFrom-$lessonTo"
-                if (lessonsBySlot.containsKey(slotKey)) {
-                    val existing = lessonsBySlot[slotKey]!!
-                    val existingTypeId = existing.optJSONObject("hourType")?.optString("id", "") ?: ""
-                    if (hourTypeId == "SUPLOVANI" && existingTypeId == "SUPLOVANA") {
-                        lessonsBySlot[slotKey] = schedule
-                    }
-                } else {
-                    lessonsBySlot[slotKey] = schedule
-                }
+                allLessons.add(schedule)
             }
             
             // Sort lessons by begin time
-            val sortedLessons = lessonsBySlot.values.sortedBy { 
+            val sortedLessons = allLessons.sortedBy { 
                 it.optString("beginTime", "")
             }
             
@@ -151,18 +137,25 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         }
         
         val rooms = lesson.optJSONArray("rooms")
-        val roomAbbrev = if (rooms != null && rooms.length() > 0) {
+        val roomAbbrev = if (rooms != null && rooms.length() == 1) {
             rooms.getJSONObject(0).optString("abbrev", "")
         } else ""
         
         val teachers = lesson.optJSONArray("teachers")
-        val teacherName = if (teachers != null && teachers.length() > 0) {
+        val teacherName = if (teachers != null && teachers.length() == 1) {
             teachers.getJSONObject(0).optString("displayName", "")
         } else ""
         
-        val lessonFrom = lesson.optString("lessonIdFrom", "")
-        val lessonTo = lesson.optString("lessonIdTo", "")
-        val lessonNum = if (lessonFrom == lessonTo) lessonFrom else "$lessonFrom-$lessonTo"
+        val detailHours = lesson.optJSONArray("detailHours")
+        val lessonNum = if (detailHours != null && detailHours.length() > 0) {
+            if (detailHours.length() == 1) {
+                detailHours.getJSONObject(0).optString("name", "")
+            } else {
+                val firstName = detailHours.getJSONObject(0).optString("name", "")
+                val lastName = detailHours.getJSONObject(detailHours.length() - 1).optString("name", "")
+                "$firstName-$lastName"
+            }
+        } else ""
         
         val result = JSONObject()
         result.put("lessonNum", lessonNum)
@@ -255,7 +248,7 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         }
     }
     
-    private fun getAccessToken(refreshToken: String): String? {
+    private fun getAccessToken(context: Context, refreshToken: String): String? {
         val url = URL("https://aplikace.skolaonline.cz/solapi/api/connect/token")
         val connection = url.openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
@@ -268,6 +261,14 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         if (connection.responseCode == 200) {
             val response = connection.inputStream.bufferedReader().readText()
             val json = JSONObject(response)
+            
+            // Save the new refresh token if provided
+            val newRefreshToken = json.optString("refresh_token")
+            if (newRefreshToken.isNotEmpty()) {
+                val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                prefs.edit().putString("flutter.refresh_token", newRefreshToken).apply()
+            }
+            
             return json.optString("access_token")
         }
         return null

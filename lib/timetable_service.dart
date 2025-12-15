@@ -43,33 +43,12 @@ class TimetableService {
         final schedules = day['schedules'] as List<dynamic>?;
         if (schedules == null) return [];
 
-        // Filter and sort lessons, prefer SUPLOVANI over SUPLOVANA for same time slot
-        final Map<String, Map<String, dynamic>> lessonsBySlot = {};
+        // Collect all lessons
+        final lessons = schedules
+            .map((schedule) => Map<String, dynamic>.from(schedule))
+            .toList();
 
-        for (final schedule in schedules) {
-          final lessonFrom = schedule['lessonIdFrom'] as String? ?? '';
-          final lessonTo = schedule['lessonIdTo'] as String? ?? '';
-          final hourType = schedule['hourType'] as Map<String, dynamic>?;
-          final hourTypeId = hourType?['id'] as String? ?? '';
-
-          // Skip SUPLOVANA if we already have SUPLOVANI for same slot
-          final slotKey = '$lessonFrom-$lessonTo';
-          if (lessonsBySlot.containsKey(slotKey)) {
-            final existing = lessonsBySlot[slotKey]!;
-            final existingType =
-                (existing['hourType'] as Map<String, dynamic>?)?['id'] ?? '';
-            // SUPLOVANI takes priority over SUPLOVANA
-            if (hourTypeId == 'SUPLOVANI' && existingType == 'SUPLOVANA') {
-              lessonsBySlot[slotKey] = Map<String, dynamic>.from(schedule);
-            }
-            // Otherwise keep existing
-          } else {
-            lessonsBySlot[slotKey] = Map<String, dynamic>.from(schedule);
-          }
-        }
-
-        // Convert to list and sort by begin time
-        final lessons = lessonsBySlot.values.toList();
+        // Sort by begin time
         lessons.sort((a, b) {
           final aTime = a['beginTime'] as String? ?? '';
           final bTime = b['beginTime'] as String? ?? '';
@@ -140,6 +119,7 @@ class TimetableService {
   static String getRoomAbbrev(Map<String, dynamic> lesson) {
     final rooms = lesson['rooms'] as List<dynamic>?;
     if (rooms == null || rooms.isEmpty) return '';
+    if (rooms.length > 1) return '';
     return rooms[0]['abbrev'] as String? ?? '';
   }
 
@@ -147,15 +127,22 @@ class TimetableService {
   static String getTeacherDisplayName(Map<String, dynamic> lesson) {
     final teachers = lesson['teachers'] as List<dynamic>?;
     if (teachers == null || teachers.isEmpty) return '';
+    if (teachers.length > 1) return '';
     return teachers[0]['displayName'] as String? ?? '';
   }
 
   /// Gets the lesson number range (e.g., "1" or "3-4")
   static String getLessonNumber(Map<String, dynamic> lesson) {
-    final from = lesson['lessonIdFrom'] as String? ?? '';
-    final to = lesson['lessonIdTo'] as String? ?? '';
-    if (from == to) return from;
-    return '$from-$to';
+    final detailHours = lesson['detailHours'] as List<dynamic>?;
+    if (detailHours == null || detailHours.isEmpty) return '';
+    
+    if (detailHours.length == 1) {
+      return detailHours[0]['name'] as String? ?? '';
+    } else {
+      final firstName = detailHours.first['name'] as String? ?? '';
+      final lastName = detailHours.last['name'] as String? ?? '';
+      return '$firstName-$lastName';
+    }
   }
 
   /// Gets all days with their lessons from the timetable
@@ -174,28 +161,12 @@ class TimetableService {
       final schedules = day['schedules'] as List<dynamic>?;
       if (schedules == null) continue;
 
-      // Filter and deduplicate lessons
-      final Map<String, Map<String, dynamic>> lessonsBySlot = {};
-      for (final schedule in schedules) {
-        final lessonFrom = schedule['lessonIdFrom'] as String? ?? '';
-        final lessonTo = schedule['lessonIdTo'] as String? ?? '';
-        final hourType = schedule['hourType'] as Map<String, dynamic>?;
-        final hourTypeId = hourType?['id'] as String? ?? '';
+      // Collect all lessons
+      final lessons = schedules
+          .map((schedule) => Map<String, dynamic>.from(schedule))
+          .toList();
 
-        final slotKey = '$lessonFrom-$lessonTo';
-        if (lessonsBySlot.containsKey(slotKey)) {
-          final existing = lessonsBySlot[slotKey]!;
-          final existingType =
-              (existing['hourType'] as Map<String, dynamic>?)?['id'] ?? '';
-          if (hourTypeId == 'SUPLOVANI' && existingType == 'SUPLOVANA') {
-            lessonsBySlot[slotKey] = Map<String, dynamic>.from(schedule);
-          }
-        } else {
-          lessonsBySlot[slotKey] = Map<String, dynamic>.from(schedule);
-        }
-      }
-
-      final lessons = lessonsBySlot.values.toList();
+      // Sort by begin time
       lessons.sort((a, b) {
         final aTime = a['beginTime'] as String? ?? '';
         final bTime = b['beginTime'] as String? ?? '';
