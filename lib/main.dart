@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'access_token_service.dart';
+import 'home_widget_service.dart';
 import 'login_service.dart';
 import 'user_info_service.dart';
 
@@ -46,10 +47,47 @@ class _LoginFormState extends State<LoginForm> {
   Map<String, dynamic>? _userInfo;
 
   @override
+  void initState() {
+    super.initState();
+    _checkExistingSession();
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkExistingSession() async {
+    setState(() => _loading = true);
+
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken == null) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    final accessToken = await AccessTokenService.getAccessToken();
+    if (accessToken == null) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    final userInfo = await UserInfoService.getUserInfo(accessToken);
+    if (userInfo == null) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _userInfo = userInfo;
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _login() async {
@@ -89,6 +127,9 @@ class _LoginFormState extends State<LoginForm> {
       _loading = false;
     });
     _showSuccessSnackBar('Přihlášení úspěšné');
+
+    // Update the home widget with today's schedule
+    await HomeWidgetService.updateWidget();
   }
 
   Future<void> _logout() async {
