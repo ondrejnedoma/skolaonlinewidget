@@ -1,0 +1,212 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'access_token_service.dart';
+import 'login_service.dart';
+import 'user_info_service.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData.light().copyWith(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+      ),
+      darkTheme: ThemeData.dark().copyWith(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.green,
+          brightness: Brightness.dark,
+        ),
+      ),
+      themeMode: ThemeMode.system,
+      home: const LoginForm(),
+    );
+  }
+}
+
+class LoginForm extends StatefulWidget {
+  const LoginForm({super.key});
+
+  @override
+  State<LoginForm> createState() => _LoginFormState();
+}
+
+class _LoginFormState extends State<LoginForm> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _passwordVisible = false;
+  bool _loading = false;
+  Map<String, dynamic>? _userInfo;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    setState(() => _loading = true);
+
+    final username = _usernameController.text;
+    final password = _passwordController.text;
+    final errorDescription = await LoginService.login(username, password);
+    _passwordController.clear();
+    if (!mounted) return;
+
+    if (errorDescription == null) {
+      await _handleSuccessfulLogin();
+    } else {
+      _showErrorSnackBar(errorDescription);
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _handleSuccessfulLogin() async {
+    final accessToken = await AccessTokenService.getAccessToken();
+    if (accessToken == null) {
+      _showErrorSnackBar('Nepodařilo se získat access token');
+      setState(() => _loading = false);
+      return;
+    }
+
+    final userInfo = await UserInfoService.getUserInfo(accessToken);
+    if (userInfo == null) {
+      _showErrorSnackBar('Nepodařilo se získat informace o uživateli');
+      setState(() => _loading = false);
+      return;
+    }
+
+    setState(() {
+      _userInfo = userInfo;
+      _loading = false;
+    });
+    _showSuccessSnackBar('Přihlášení úspěšné');
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('refresh_token');
+
+    setState(() => _userInfo = null);
+
+    if (mounted) {
+      _showSuccessSnackBar('Úspěšně odhlášeno');
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: _userInfo != null
+            ? LoggedInWidget(userInfo: _userInfo!, onLogout: _logout)
+            : _buildLoginForm(),
+      ),
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _usernameController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: "Uživatelské jméno",
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordController,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: "Heslo",
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _passwordVisible ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() => _passwordVisible = !_passwordVisible);
+                  },
+                ),
+              ),
+              obscureText: !_passwordVisible,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loading ? null : _login,
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text("Přihlásit se"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LoggedInWidget extends StatelessWidget {
+  final Map<String, dynamic> userInfo;
+  final VoidCallback onLogout;
+
+  const LoggedInWidget({
+    super.key,
+    required this.userInfo,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fullName = userInfo["fullName"] ?? "?";
+    final userType = userInfo["userTypeText"] ?? "?";
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text("Přihlášen", style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 16),
+          Text(
+            "$fullName - $userType",
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(onPressed: onLogout, child: const Text("Odhlásit se")),
+        ],
+      ),
+    );
+  }
+}
