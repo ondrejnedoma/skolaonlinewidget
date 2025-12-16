@@ -71,13 +71,10 @@ class HomeWidgetService {
         };
       }).toList();
 
-      final todayIndex = TimetableService.findTodayIndex(allDays);
-
       await HomeWidget.saveWidgetData<String>(
         'all_days_data',
         json.encode(daysData),
       );
-      await HomeWidget.saveWidgetData<int>('current_day_index', todayIndex);
       await HomeWidget.saveWidgetData<String>('error', '');
       await HomeWidget.saveWidgetData<bool>('is_refreshing', false);
       await HomeWidget.saveWidgetData<String>(

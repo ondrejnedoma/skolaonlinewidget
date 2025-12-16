@@ -135,7 +135,7 @@ class TimetableService {
   static String getLessonNumber(Map<String, dynamic> lesson) {
     final detailHours = lesson['detailHours'] as List<dynamic>?;
     if (detailHours == null || detailHours.isEmpty) return '';
-    
+
     if (detailHours.length == 1) {
       return detailHours[0]['name'] as String? ?? '';
     } else {
@@ -206,20 +206,5 @@ class TimetableService {
     } catch (_) {
       return dateStr;
     }
-  }
-
-  /// Finds the index of today in the days list, or 0 if not found
-  static int findTodayIndex(List<Map<String, dynamic>> days) {
-    final now = DateTime.now();
-    final todayStr =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-    for (int i = 0; i < days.length; i++) {
-      final dateStr = days[i]['date'] as String? ?? '';
-      if (dateStr.startsWith(todayStr)) {
-        return i;
-      }
-    }
-    return 0;
   }
 }

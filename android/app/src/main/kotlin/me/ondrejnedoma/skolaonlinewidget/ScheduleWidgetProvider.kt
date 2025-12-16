@@ -18,8 +18,6 @@ import org.json.JSONObject
 class ScheduleWidgetProvider : AppWidgetProvider() {
 
     companion object {
-        const val ACTION_PREV = "me.ondrejnedoma.skolaonlinewidget.ACTION_PREV"
-        const val ACTION_NEXT = "me.ondrejnedoma.skolaonlinewidget.ACTION_NEXT"
         const val ACTION_REFRESH = "me.ondrejnedoma.skolaonlinewidget.ACTION_REFRESH"
 
         fun updateAppWidget(
@@ -29,7 +27,6 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
         ) {
             val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
             val error = prefs.getString("error", "") ?: ""
-            val currentDayIndex = prefs.getInt("current_day_index", 0)
             val allDaysData = prefs.getString("all_days_data", "[]") ?: "[]"
             val isRefreshing = prefs.getBoolean("is_refreshing", false)
 
@@ -58,15 +55,14 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                     if (totalDays == 0) {
                         views.setViewVisibility(R.id.widget_list, View.GONE)
                         views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
-                        views.setTextViewText(R.id.widget_title, "Rozvrh")
+                        views.setTextViewText(R.id.widget_title, "?")
                     } else {
-                        val safeIndex = currentDayIndex.coerceIn(0, totalDays - 1)
-                        val currentDay = daysArray.getJSONObject(safeIndex)
-                        val dateStr = currentDay.optString("date", "")
+                        val currentDay = daysArray.getJSONObject(0)
+                        val dateLabel = currentDay.optString("dateLabel", "?")
                         val lessons = currentDay.optJSONArray("lessons") ?: JSONArray()
 
-                        // Title based directly on the day's date field
-                        views.setTextViewText(R.id.widget_title, formatDateForTitle(dateStr))
+                        // Display formatted date label
+                        views.setTextViewText(R.id.widget_title, dateLabel)
 
                         if (lessons.length() == 0) {
                             views.setViewVisibility(R.id.widget_list, View.GONE)
@@ -104,24 +100,6 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
             )
         }
 
-        private fun formatDateForTitle(dateStr: String): String {
-            return try {
-                val input = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-                val date = input.parse(dateStr) ?: return "Rozvrh"
-                val calendar = java.util.Calendar.getInstance()
-                calendar.time = date
-                
-                val dayNames = arrayOf("Ne", "Po", "Út", "St", "Čt", "Pá", "So")
-                val dayOfWeek = dayNames[calendar.get(java.util.Calendar.DAY_OF_WEEK) - 1]
-                val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                val month = calendar.get(java.util.Calendar.MONTH) + 1
-                val year = calendar.get(java.util.Calendar.YEAR)
-                
-                "$dayOfWeek $day.$month.$year"
-            } catch (e: Exception) {
-                "Rozvrh"
-            }
-        }
     }
 
     override fun onUpdate(
@@ -138,7 +116,7 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        
+
         if (intent.action == ACTION_REFRESH) {
             triggerRefresh(context)
         }
@@ -163,13 +141,13 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
         context.sendBroadcast(intent)
     }
 
+
     override fun onEnabled(context: Context) {
         // Initialize widget state when first added
         val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
         prefs.edit()
             .putBoolean("is_refreshing", false)
             .putString("all_days_data", "[]")
-            .putInt("current_day_index", 0)
             .apply()
     }
     
@@ -208,15 +186,13 @@ class ScheduleRemoteViewsFactory(private val context: Context) : RemoteViewsServ
     private fun loadData() {
         lessons.clear()
         val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
-        val currentDayIndex = prefs.getInt("current_day_index", 0)
         val allDaysData = prefs.getString("all_days_data", "[]") ?: "[]"
         
         try {
             val daysArray = JSONArray(allDaysData)
             if (daysArray.length() == 0) return
             
-            val safeIndex = currentDayIndex.coerceIn(0, daysArray.length() - 1)
-            val currentDay = daysArray.getJSONObject(safeIndex)
+            val currentDay = daysArray.getJSONObject(0)
             val lessonsArray = currentDay.optJSONArray("lessons") ?: return
 
             for (i in 0 until lessonsArray.length()) {

@@ -66,12 +66,10 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             }
             
             val processedData = processTimetable(timetable)
-            val todayIndex = findTodayIndex(processedData)
             
             val widgetPrefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
             widgetPrefs.edit()
                 .putString("all_days_data", processedData.toString())
-                .putInt("current_day_index", todayIndex)
                 .putString("error", "")
                 .putBoolean("is_refreshing", false)
                 .apply()
@@ -118,7 +116,6 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             }
             
             val dayData = JSONObject()
-            dayData.put("date", dateStr)
             dayData.put("dateLabel", formatDateLabel(dateStr))
             dayData.put("lessons", formattedLessons)
             result.put(dayData)
@@ -191,47 +188,15 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             val calendar = Calendar.getInstance()
             calendar.time = date
             
-            val today = Calendar.getInstance()
-            today.set(Calendar.HOUR_OF_DAY, 0)
-            today.set(Calendar.MINUTE, 0)
-            today.set(Calendar.SECOND, 0)
-            today.set(Calendar.MILLISECOND, 0)
-            
-            val dateOnly = Calendar.getInstance()
-            dateOnly.time = date
-            dateOnly.set(Calendar.HOUR_OF_DAY, 0)
-            dateOnly.set(Calendar.MINUTE, 0)
-            dateOnly.set(Calendar.SECOND, 0)
-            dateOnly.set(Calendar.MILLISECOND, 0)
-            
             val weekdays = arrayOf("Po", "Út", "St", "Čt", "Pá", "So", "Ne")
             val dayName = weekdays[(calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7]
+            val day = calendar.get(Calendar.DAY_OF_MONTH)
+            val month = calendar.get(Calendar.MONTH) + 1
             
-            val diffDays = ((dateOnly.timeInMillis - today.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-            
-            when (diffDays) {
-                0 -> "Dnes ($dayName)"
-                1 -> "Zítra ($dayName)"
-                -1 -> "Včera ($dayName)"
-                else -> "$dayName ${calendar.get(Calendar.DAY_OF_MONTH)}.${calendar.get(Calendar.MONTH) + 1}."
-            }
+            "$dayName $day.$month."
         } catch (e: Exception) {
             dateStr
         }
-    }
-    
-    private fun findTodayIndex(daysArray: JSONArray): Int {
-        val todayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val today = todayFormat.format(Date())
-        
-        for (i in 0 until daysArray.length()) {
-            val day = daysArray.getJSONObject(i)
-            val dateStr = day.optString("date", "")
-            if (dateStr.startsWith(today)) {
-                return i
-            }
-        }
-        return 0
     }
     
     private fun setError(context: Context, error: String) {
