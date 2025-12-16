@@ -36,8 +36,6 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
             // Set up button intents
-            views.setOnClickPendingIntent(R.id.btn_prev, getPendingIntent(context, ACTION_PREV))
-            views.setOnClickPendingIntent(R.id.btn_next, getPendingIntent(context, ACTION_NEXT))
             views.setOnClickPendingIntent(R.id.btn_refresh, getPendingIntent(context, ACTION_REFRESH))
 
             // Show/hide refresh button and progress indicator
@@ -49,8 +47,6 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_error, View.VISIBLE)
                 views.setViewVisibility(R.id.widget_list, View.GONE)
                 views.setViewVisibility(R.id.widget_empty, View.GONE)
-                views.setViewVisibility(R.id.btn_prev, View.GONE)
-                views.setViewVisibility(R.id.btn_next, View.GONE)
                 views.setTextViewText(R.id.widget_title, "Rozvrh")
             } else {
                 views.setViewVisibility(R.id.widget_error, View.GONE)
@@ -59,10 +55,6 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                     val daysArray = JSONArray(allDaysData)
                     val totalDays = daysArray.length()
 
-                    // Show/hide navigation buttons
-                    views.setViewVisibility(R.id.btn_prev, if (currentDayIndex > 0) View.VISIBLE else View.INVISIBLE)
-                    views.setViewVisibility(R.id.btn_next, if (currentDayIndex < totalDays - 1) View.VISIBLE else View.INVISIBLE)
-
                     if (totalDays == 0) {
                         views.setViewVisibility(R.id.widget_list, View.GONE)
                         views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
@@ -70,10 +62,11 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                     } else {
                         val safeIndex = currentDayIndex.coerceIn(0, totalDays - 1)
                         val currentDay = daysArray.getJSONObject(safeIndex)
-                        val dateLabel = currentDay.optString("dateLabel", "")
+                        val dateStr = currentDay.optString("date", "")
                         val lessons = currentDay.optJSONArray("lessons") ?: JSONArray()
 
-                        views.setTextViewText(R.id.widget_title, dateLabel.ifEmpty { "Rozvrh" })
+                        // Title based directly on the day's date field
+                        views.setTextViewText(R.id.widget_title, formatDateForTitle(dateStr))
 
                         if (lessons.length() == 0) {
                             views.setViewVisibility(R.id.widget_list, View.GONE)
@@ -92,8 +85,6 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                 } catch (e: Exception) {
                     views.setViewVisibility(R.id.widget_list, View.GONE)
                     views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
-                    views.setViewVisibility(R.id.btn_prev, View.GONE)
-                    views.setViewVisibility(R.id.btn_next, View.GONE)
                 }
             }
 
@@ -112,6 +103,25 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         }
+
+        private fun formatDateForTitle(dateStr: String): String {
+            return try {
+                val input = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                val date = input.parse(dateStr) ?: return "Rozvrh"
+                val calendar = java.util.Calendar.getInstance()
+                calendar.time = date
+                
+                val dayNames = arrayOf("Ne", "Po", "Út", "St", "Čt", "Pá", "So")
+                val dayOfWeek = dayNames[calendar.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+                val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+                val month = calendar.get(java.util.Calendar.MONTH) + 1
+                val year = calendar.get(java.util.Calendar.YEAR)
+                
+                "$dayOfWeek $day.$month.$year"
+            } catch (e: Exception) {
+                "Rozvrh"
+            }
+        }
     }
 
     override fun onUpdate(
@@ -129,35 +139,8 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         
-        when (intent.action) {
-            ACTION_PREV -> navigateDay(context, -1)
-            ACTION_NEXT -> navigateDay(context, 1)
-            ACTION_REFRESH -> triggerRefresh(context)
-        }
-    }
-
-    private fun navigateDay(context: Context, delta: Int) {
-        val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
-        val allDaysData = prefs.getString("all_days_data", "[]") ?: "[]"
-        val currentIndex = prefs.getInt("current_day_index", 0)
-
-        try {
-            val daysArray = JSONArray(allDaysData)
-            val totalDays = daysArray.length()
-            val newIndex = (currentIndex + delta).coerceIn(0, maxOf(0, totalDays - 1))
-            
-            prefs.edit().putInt("current_day_index", newIndex).apply()
-
-            // Update all widgets
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val widgetIds = appWidgetManager.getAppWidgetIds(
-                ComponentName(context, ScheduleWidgetProvider::class.java)
-            )
-            for (id in widgetIds) {
-                updateAppWidget(context, appWidgetManager, id)
-            }
-        } catch (e: Exception) {
-            // Ignore
+        if (intent.action == ACTION_REFRESH) {
+            triggerRefresh(context)
         }
     }
 
