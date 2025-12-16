@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'access_token_service.dart';
@@ -242,6 +243,33 @@ class LoggedInWidget extends StatelessWidget {
     required this.onLogout,
   });
 
+  static const platform = MethodChannel(
+    'me.ondrejnedoma.skolaonlinewidget/widget',
+  );
+
+  Future<void> _requestPinWidget(BuildContext context) async {
+    try {
+      final result = await platform.invokeMethod('requestPinWidget');
+      if (result == true && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Widget byl úspěšně přidán'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on PlatformException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Chyba: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final fullName = userInfo["fullName"] ?? "?";
@@ -259,6 +287,11 @@ class LoggedInWidget extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () => _requestPinWidget(context),
+            child: const Text("Přidat widget"),
+          ),
+          const SizedBox(height: 8),
           ElevatedButton(onPressed: onLogout, child: const Text("Odhlásit se")),
         ],
       ),
