@@ -1,4 +1,4 @@
-package com.example.skolaonlinewidget
+package me.ondrejnedoma.skolaonlinewidget
 
 import android.content.BroadcastReceiver
 import android.content.Context

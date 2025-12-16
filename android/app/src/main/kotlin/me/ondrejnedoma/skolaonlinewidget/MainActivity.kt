@@ -1,4 +1,4 @@
-package com.example.skolaonlinewidget
+package me.ondrejnedoma.skolaonlinewidget
 
 import io.flutter.embedding.android.FlutterActivity
 

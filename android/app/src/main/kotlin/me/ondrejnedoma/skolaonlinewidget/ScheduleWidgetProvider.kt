@@ -1,4 +1,4 @@
-package com.example.skolaonlinewidget
+package me.ondrejnedoma.skolaonlinewidget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -18,9 +18,9 @@ import org.json.JSONObject
 class ScheduleWidgetProvider : AppWidgetProvider() {
 
     companion object {
-        const val ACTION_PREV = "com.example.skolaonlinewidget.ACTION_PREV"
-        const val ACTION_NEXT = "com.example.skolaonlinewidget.ACTION_NEXT"
-        const val ACTION_REFRESH = "com.example.skolaonlinewidget.ACTION_REFRESH"
+        const val ACTION_PREV = "me.ondrejnedoma.skolaonlinewidget.ACTION_PREV"
+        const val ACTION_NEXT = "me.ondrejnedoma.skolaonlinewidget.ACTION_NEXT"
+        const val ACTION_REFRESH = "me.ondrejnedoma.skolaonlinewidget.ACTION_REFRESH"
 
         fun updateAppWidget(
             context: Context,
