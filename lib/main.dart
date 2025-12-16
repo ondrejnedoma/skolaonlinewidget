@@ -44,6 +44,7 @@ class _LoginFormState extends State<LoginForm> {
 
   bool _passwordVisible = false;
   bool _loading = false;
+  bool _initializing = true;
   Map<String, dynamic>? _userInfo;
 
   @override
@@ -60,32 +61,30 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Future<void> _checkExistingSession() async {
-    setState(() => _loading = true);
-
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refresh_token');
 
     if (refreshToken == null) {
-      setState(() => _loading = false);
+      setState(() => _initializing = false);
       return;
     }
 
     final accessToken = await AccessTokenService.getAccessToken();
     if (accessToken == null) {
-      setState(() => _loading = false);
+      setState(() => _initializing = false);
       return;
     }
 
     final userInfo = await UserInfoService.getUserInfo(accessToken);
     if (userInfo == null) {
-      setState(() => _loading = false);
+      setState(() => _initializing = false);
       return;
     }
 
     if (mounted) {
       setState(() {
         _userInfo = userInfo;
-        _loading = false;
+        _initializing = false;
       });
     }
   }
@@ -157,6 +156,21 @@ class _LoginFormState extends State<LoginForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (_initializing) {
+      return const Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 80,
+            height: 80,
+            child: CircularProgressIndicator(
+              strokeWidth: 6,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Center(
         child: _userInfo != null
