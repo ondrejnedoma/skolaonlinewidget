@@ -180,7 +180,16 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
         context.sendBroadcast(intent)
     }
 
-    override fun onEnabled(context: Context) {}
+    override fun onEnabled(context: Context) {
+        // Initialize widget state when first added
+        val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putBoolean("is_refreshing", false)
+            .putString("all_days_data", "[]")
+            .putInt("current_day_index", 0)
+            .apply()
+    }
+    
     override fun onDisabled(context: Context) {}
 }
 

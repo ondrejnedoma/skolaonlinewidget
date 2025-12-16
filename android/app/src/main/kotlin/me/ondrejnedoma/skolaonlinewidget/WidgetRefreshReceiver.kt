@@ -21,6 +21,8 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 refreshWidget(context)
+            } catch (e: Exception) {
+                setError(context, "Chyba: ${e.message}")
             } finally {
                 pendingResult.finish()
             }
@@ -254,6 +256,8 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         connection.requestMethod = "POST"
         connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
         connection.doOutput = true
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
         
         val params = "client_id=test_client&grant_type=refresh_token&refresh_token=$refreshToken"
         connection.outputStream.write(params.toByteArray())
@@ -278,6 +282,8 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         val url = URL("https://aplikace.skolaonline.cz/solapi/api/v1/user")
         val connection = url.openConnection() as HttpURLConnection
         connection.setRequestProperty("Authorization", "Bearer $accessToken")
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
         
         if (connection.responseCode == 200) {
             val response = connection.inputStream.bufferedReader().readText()
@@ -290,6 +296,8 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         val url = URL("https://aplikace.skolaonline.cz/solapi/api/v1/timeTable?StudentId=$personId&SchoolYearId=$schoolYearId")
         val connection = url.openConnection() as HttpURLConnection
         connection.setRequestProperty("Authorization", "Bearer $accessToken")
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
         
         if (connection.responseCode == 200) {
             val response = connection.inputStream.bufferedReader().readText()
