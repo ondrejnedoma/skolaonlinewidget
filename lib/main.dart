@@ -293,15 +293,7 @@ class LoggedInWidget extends StatelessWidget {
 
   Future<void> _requestPinWidget(BuildContext context) async {
     try {
-      final result = await platform.invokeMethod('requestPinWidget');
-      if (result == true && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Widget byl úspěšně přidán'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      await platform.invokeMethod('requestPinWidget');
     } on PlatformException catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
