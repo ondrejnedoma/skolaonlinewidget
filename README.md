@@ -1,6 +1,6 @@
-# skolaonlinewidget
+# Škola Online widget
 
-A new Flutter project.
+A homescreen widget displaying the school schedule pulled from the Škola Online API
 
 ## Getting Started
 
