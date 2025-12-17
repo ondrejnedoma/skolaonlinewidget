@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 
 import 'access_token_service.dart';
 import 'home_widget_service.dart';
@@ -46,7 +48,9 @@ class _LoginFormState extends State<LoginForm> {
   bool _passwordVisible = false;
   bool _loading = false;
   bool _initializing = true;
+  bool _waitingForInternet = false;
   Map<String, dynamic>? _userInfo;
+  Timer? _connectivityCheckTimer;
 
   @override
   void initState() {
@@ -58,10 +62,36 @@ class _LoginFormState extends State<LoginForm> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _connectivityCheckTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _checkExistingSession() async {
+    // Check internet connectivity first
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final hasInternet = connectivityResult.any(
+      (result) => result != ConnectivityResult.none,
+    );
+
+    if (!hasInternet) {
+      setState(() => _waitingForInternet = true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Připojte se k internetu'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      // Start periodic check every 3 seconds
+      _connectivityCheckTimer = Timer.periodic(
+        const Duration(seconds: 3),
+        (timer) => _retryConnectionCheck(),
+      );
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refresh_token');
 
@@ -87,6 +117,20 @@ class _LoginFormState extends State<LoginForm> {
         _userInfo = userInfo;
         _initializing = false;
       });
+    }
+  }
+
+  Future<void> _retryConnectionCheck() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final hasInternet = connectivityResult.any(
+      (result) => result != ConnectivityResult.none,
+    );
+
+    if (hasInternet) {
+      _connectivityCheckTimer?.cancel();
+      setState(() => _waitingForInternet = false);
+      // Retry the session check now that we have internet
+      _checkExistingSession();
     }
   }
 

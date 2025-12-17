@@ -14,6 +14,9 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import java.text.SimpleDateFormat
 import java.util.*
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
 
 class WidgetRefreshReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -30,6 +33,11 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
     }
     
     private fun refreshWidget(context: Context) {
+        // Check internet connectivity first - if no internet, silently keep stale data
+        if (!hasInternetConnection(context)) {
+            return
+        }
+        
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         
         val refreshToken = prefs.getString("flutter.refresh_token", null)
@@ -196,6 +204,22 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             "$dayName $day.$month."
         } catch (e: Exception) {
             dateStr
+        }
+    }
+    
+    private fun hasInternetConnection(context: Context): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                   capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        } else {
+            @Suppress("DEPRECATION")
+            val networkInfo = connectivityManager.activeNetworkInfo ?: return false
+            @Suppress("DEPRECATION")
+            return networkInfo.isConnected
         }
     }
     
