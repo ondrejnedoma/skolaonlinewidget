@@ -4,15 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@android:color/background_dark"
-    android:padding="8dp">
+    android:background="@drawable/widget_background"
+    android:padding="12dp"
+    android:clipToPadding="false">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingBottom="4dp">
+        android:paddingBottom="12dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
 
         <TextView
             android:id="@+id/widget_title"
@@ -21,29 +24,20 @@
             android:layout_weight="1"
             android:text="Rozvrh"
             android:textColor="@android:color/white"
-            android:textSize="16sp"
+            android:textSize="20sp"
             android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
             android:gravity="start" />
 
         <ImageButton
             android:id="@+id/btn_refresh"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:src="@drawable/ic_refresh"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Refresh"
-            android:scaleType="centerInside" />
-
-        <ProgressBar
-            android:id="@+id/refresh_progress"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            android:indeterminate="true"
-            android:indeterminateTint="#98FF98"
-            android:visibility="gone"
-            style="?android:attr/progressBarStyleSmall" />
+            android:scaleType="centerInside"
+            android:tint="#AAAAAA" />
 
     </LinearLayout>
 
@@ -61,7 +55,9 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:divider="@android:color/transparent"
-        android:dividerHeight="0dp" />
+        android:dividerHeight="0dp"
+        android:clipToPadding="false"
+        android:clipChildren="false" />
 
     <TextView
         android:id="@+id/widget_empty"

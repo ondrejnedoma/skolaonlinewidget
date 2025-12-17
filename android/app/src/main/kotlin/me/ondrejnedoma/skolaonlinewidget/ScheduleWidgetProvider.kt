@@ -35,9 +35,12 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
             // Set up button intents
             views.setOnClickPendingIntent(R.id.btn_refresh, getPendingIntent(context, ACTION_REFRESH))
 
-            // Show/hide refresh button and progress indicator
-            views.setViewVisibility(R.id.btn_refresh, if (isRefreshing) View.GONE else View.VISIBLE)
-            views.setViewVisibility(R.id.refresh_progress, if (isRefreshing) View.VISIBLE else View.GONE)
+            // Swap between normal and rotating refresh icon
+            if (isRefreshing) {
+                views.setImageViewResource(R.id.btn_refresh, R.drawable.ic_refresh_rotating)
+            } else {
+                views.setImageViewResource(R.id.btn_refresh, R.drawable.ic_refresh)
+            }
 
             if (error.isNotEmpty()) {
                 views.setTextViewText(R.id.widget_error, error)
@@ -232,23 +235,23 @@ class ScheduleRemoteViewsFactory(private val context: Context) : RemoteViewsServ
             views.setTextViewText(R.id.lesson_teacher, lesson.teacher)
             views.setTextViewText(R.id.lesson_room, lesson.room)
             
-            // Set background drawable based on lesson type
-            val bgDrawable = when {
-                lesson.isEvent -> R.drawable.lesson_item_bg_event
-                lesson.isSupl -> R.drawable.lesson_item_bg_supl
-                lesson.isCancelled -> R.drawable.lesson_item_bg_cancelled
-                else -> R.drawable.lesson_item_bg
+            // Set indicator stripe color based on lesson type
+            val indicatorColor = when {
+                lesson.isCancelled -> Color.parseColor("#252525") // Same as background for cancelled
+                lesson.isSupl -> Color.parseColor("#FF3B30") // Red for substitute
+                lesson.isEvent -> Color.parseColor("#2196F3") // Blue for event
+                else -> Color.WHITE // White for normal
             }
-            views.setInt(R.id.lesson_item, "setBackgroundResource", bgDrawable)
+            views.setInt(R.id.lesson_indicator, "setBackgroundColor", indicatorColor)
             
-            // Apply strikethrough for cancelled lessons
+            // Apply grey color and strikethrough for cancelled lessons
             if (lesson.isCancelled) {
                 views.setInt(R.id.lesson_subject, "setPaintFlags", 
                     android.graphics.Paint.STRIKE_THRU_TEXT_FLAG or android.graphics.Paint.ANTI_ALIAS_FLAG)
-                views.setTextColor(R.id.lesson_subject, android.graphics.Color.RED)
+                views.setTextColor(R.id.lesson_subject, Color.parseColor("#888888"))
             } else {
                 views.setInt(R.id.lesson_subject, "setPaintFlags", android.graphics.Paint.ANTI_ALIAS_FLAG)
-                views.setTextColor(R.id.lesson_subject, android.graphics.Color.WHITE)
+                views.setTextColor(R.id.lesson_subject, Color.WHITE)
             }
         }
         
