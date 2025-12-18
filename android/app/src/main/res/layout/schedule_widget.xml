@@ -39,6 +39,16 @@
             android:scaleType="centerInside"
             android:tint="#AAAAAA" />
 
+        <ProgressBar
+            android:id="@+id/refresh_progress"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_margin="6dp"
+            android:indeterminate="true"
+            android:indeterminateTint="#15c188"
+            android:visibility="gone"
+            style="?android:attr/progressBarStyleSmall" />
+
     </LinearLayout>
 
     <TextView

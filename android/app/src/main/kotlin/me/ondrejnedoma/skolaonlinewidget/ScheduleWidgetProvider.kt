@@ -35,12 +35,9 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
             // Set up button intents
             views.setOnClickPendingIntent(R.id.btn_refresh, getPendingIntent(context, ACTION_REFRESH))
 
-            // Swap between normal and rotating refresh icon
-            if (isRefreshing) {
-                views.setImageViewResource(R.id.btn_refresh, R.drawable.ic_refresh_rotating)
-            } else {
-                views.setImageViewResource(R.id.btn_refresh, R.drawable.ic_refresh)
-            }
+            // Show/hide refresh button and progress indicator
+            views.setViewVisibility(R.id.btn_refresh, if (isRefreshing) View.GONE else View.VISIBLE)
+            views.setViewVisibility(R.id.refresh_progress, if (isRefreshing) View.VISIBLE else View.GONE)
 
             if (error.isNotEmpty()) {
                 views.setTextViewText(R.id.widget_error, error)

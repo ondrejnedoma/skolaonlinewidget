@@ -33,8 +33,9 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
     }
     
     private fun refreshWidget(context: Context) {
-        // Check internet connectivity first - if no internet, silently keep stale data
+        // Check internet connectivity first - if no internet, keep refreshing state and schedule retry
         if (!hasInternetConnection(context)) {
+            scheduleRetry(context)
             return
         }
         
@@ -205,6 +206,14 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         } catch (e: Exception) {
             dateStr
         }
+    }
+    
+    private fun scheduleRetry(context: Context) {
+        // Keep the refreshing state and schedule a retry in 5 seconds
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            val intent = Intent(context, WidgetRefreshReceiver::class.java)
+            context.sendBroadcast(intent)
+        }, 5000)
     }
     
     private fun hasInternetConnection(context: Context): Boolean {
