@@ -249,9 +249,14 @@ class ScheduleRemoteViewsFactory(private val context: Context) : RemoteViewsServ
                 views.setInt(R.id.lesson_subject, "setPaintFlags", 
                     android.graphics.Paint.STRIKE_THRU_TEXT_FLAG or android.graphics.Paint.ANTI_ALIAS_FLAG)
                 views.setTextColor(R.id.lesson_subject, Color.parseColor("#888888"))
+                views.setInt(R.id.lesson_num, "setPaintFlags", 
+                    android.graphics.Paint.STRIKE_THRU_TEXT_FLAG or android.graphics.Paint.ANTI_ALIAS_FLAG)
+                views.setTextColor(R.id.lesson_num, Color.parseColor("#888888"))
             } else {
                 views.setInt(R.id.lesson_subject, "setPaintFlags", android.graphics.Paint.ANTI_ALIAS_FLAG)
                 views.setTextColor(R.id.lesson_subject, Color.WHITE)
+                views.setInt(R.id.lesson_num, "setPaintFlags", android.graphics.Paint.ANTI_ALIAS_FLAG)
+                views.setTextColor(R.id.lesson_num, Color.WHITE)
             }
         }
         
