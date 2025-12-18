@@ -80,10 +80,12 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:minHeight="20dp"
             android:orientation="horizontal"
             android:gravity="start">
 
             <LinearLayout
+                android:id="@+id/lesson_teacher_tag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -114,6 +116,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/lesson_room_tag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"

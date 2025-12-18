@@ -235,6 +235,20 @@ class ScheduleRemoteViewsFactory(private val context: Context) : RemoteViewsServ
             views.setTextViewText(R.id.lesson_teacher, lesson.teacher)
             views.setTextViewText(R.id.lesson_room, lesson.room)
             
+            // Hide teacher tag if text is empty
+            if (lesson.teacher.isEmpty()) {
+                views.setViewVisibility(R.id.lesson_teacher_tag, View.GONE)
+            } else {
+                views.setViewVisibility(R.id.lesson_teacher_tag, View.VISIBLE)
+            }
+            
+            // Hide room tag if text is empty
+            if (lesson.room.isEmpty()) {
+                views.setViewVisibility(R.id.lesson_room_tag, View.GONE)
+            } else {
+                views.setViewVisibility(R.id.lesson_room_tag, View.VISIBLE)
+            }
+            
             // Set indicator stripe color based on lesson type
             val indicatorColor = when {
                 lesson.isCancelled -> Color.parseColor("#252525") // Same as background for cancelled
