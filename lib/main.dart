@@ -67,7 +67,16 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Future<void> _checkExistingSession() async {
-    // Check internet connectivity first
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString('refresh_token');
+
+    // If no refresh token, show login form immediately
+    if (refreshToken == null) {
+      setState(() => _initializing = false);
+      return;
+    }
+
+    // Only check internet connectivity if user has a refresh token
     final connectivityResult = await Connectivity().checkConnectivity();
     final hasInternet = connectivityResult.any(
       (result) => result != ConnectivityResult.none,
@@ -89,14 +98,6 @@ class _LoginFormState extends State<LoginForm> {
         const Duration(seconds: 3),
         (timer) => _retryConnectionCheck(),
       );
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString('refresh_token');
-
-    if (refreshToken == null) {
-      setState(() => _initializing = false);
       return;
     }
 
@@ -135,6 +136,25 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Future<void> _login() async {
+    // Check internet connectivity before attempting login
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final hasInternet = connectivityResult.any(
+      (result) => result != ConnectivityResult.none,
+    );
+
+    if (!hasInternet) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Připojte se k internetu'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _loading = true);
 
     final username = _usernameController.text;
