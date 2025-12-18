@@ -13,9 +13,19 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingBottom="12dp"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp">
+        android:paddingBottom="6dp"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp">
+
+        <ImageButton
+            android:id="@+id/btn_prev_day"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_chevron_left"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Previous Day"
+            android:scaleType="centerInside"
+            android:tint="#AAAAAA" />
 
         <TextView
             android:id="@+id/widget_title"
@@ -27,7 +37,17 @@
             android:textSize="20sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium"
-            android:gravity="start" />
+            android:gravity="center" />
+
+        <ImageButton
+            android:id="@+id/btn_next_day"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_chevron_right"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Next Day"
+            android:scaleType="centerInside"
+            android:tint="#AAAAAA" />
 
         <ImageButton
             android:id="@+id/btn_refresh"

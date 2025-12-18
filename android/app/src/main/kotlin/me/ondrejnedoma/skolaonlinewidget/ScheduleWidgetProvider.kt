@@ -19,6 +19,8 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val ACTION_REFRESH = "me.ondrejnedoma.skolaonlinewidget.ACTION_REFRESH"
+        const val ACTION_PREV_DAY = "me.ondrejnedoma.skolaonlinewidget.ACTION_PREV_DAY"
+        const val ACTION_NEXT_DAY = "me.ondrejnedoma.skolaonlinewidget.ACTION_NEXT_DAY"
 
         fun updateAppWidget(
             context: Context,
@@ -29,11 +31,14 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
             val error = prefs.getString("error", "") ?: ""
             val allDaysData = prefs.getString("all_days_data", "[]") ?: "[]"
             val isRefreshing = prefs.getBoolean("is_refreshing", false)
+            val currentDayIndex = prefs.getInt("current_day_index", 0)
 
             val views = RemoteViews(context.packageName, R.layout.schedule_widget)
 
             // Set up button intents
             views.setOnClickPendingIntent(R.id.btn_refresh, getPendingIntent(context, ACTION_REFRESH))
+            views.setOnClickPendingIntent(R.id.btn_prev_day, getPendingIntent(context, ACTION_PREV_DAY))
+            views.setOnClickPendingIntent(R.id.btn_next_day, getPendingIntent(context, ACTION_NEXT_DAY))
 
             // Show/hide refresh button and progress indicator
             views.setViewVisibility(R.id.btn_refresh, if (isRefreshing) View.GONE else View.VISIBLE)
@@ -56,13 +61,21 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                         views.setViewVisibility(R.id.widget_list, View.GONE)
                         views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
                         views.setTextViewText(R.id.widget_title, "?")
+                        views.setViewVisibility(R.id.btn_prev_day, View.INVISIBLE)
+                        views.setViewVisibility(R.id.btn_next_day, View.INVISIBLE)
                     } else {
-                        val currentDay = daysArray.getJSONObject(0)
+                        // Ensure currentDayIndex is within bounds
+                        val dayIndex = currentDayIndex.coerceIn(0, totalDays - 1)
+                        val currentDay = daysArray.getJSONObject(dayIndex)
                         val dateLabel = currentDay.optString("dateLabel", "?")
                         val lessons = currentDay.optJSONArray("lessons") ?: JSONArray()
 
                         // Display formatted date label
                         views.setTextViewText(R.id.widget_title, dateLabel)
+
+                        // Show/hide chevrons based on position
+                        views.setViewVisibility(R.id.btn_prev_day, if (dayIndex > 0) View.VISIBLE else View.INVISIBLE)
+                        views.setViewVisibility(R.id.btn_next_day, if (dayIndex < totalDays - 1) View.VISIBLE else View.INVISIBLE)
 
                         if (lessons.length() == 0) {
                             views.setViewVisibility(R.id.widget_list, View.GONE)
@@ -73,6 +86,7 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                             
                             val intent = Intent(context, ScheduleWidgetService::class.java).apply {
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                                putExtra("current_day_index", dayIndex)
                                 data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
                             }
                             views.setRemoteAdapter(R.id.widget_list, intent)
@@ -117,8 +131,40 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
 
-        if (intent.action == ACTION_REFRESH) {
-            triggerRefresh(context)
+        when (intent.action) {
+            ACTION_REFRESH -> triggerRefresh(context)
+            ACTION_PREV_DAY -> navigateDay(context, -1)
+            ACTION_NEXT_DAY -> navigateDay(context, 1)
+        }
+    }
+
+    private fun navigateDay(context: Context, direction: Int) {
+        val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+        val allDaysData = prefs.getString("all_days_data", "[]") ?: "[]"
+        
+        try {
+            val daysArray = JSONArray(allDaysData)
+            val totalDays = daysArray.length()
+            
+            if (totalDays > 0) {
+                val currentIndex = prefs.getInt("current_day_index", 0)
+                val newIndex = (currentIndex + direction).coerceIn(0, totalDays - 1)
+                
+                prefs.edit()
+                    .putInt("current_day_index", newIndex)
+                    .apply()
+                
+                // Update all widgets
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val widgetIds = appWidgetManager.getAppWidgetIds(
+                    ComponentName(context, ScheduleWidgetProvider::class.java)
+                )
+                for (id in widgetIds) {
+                    updateAppWidget(context, appWidgetManager, id)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -127,6 +173,7 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
         prefs.edit()
             .putString("refresh_requested", System.currentTimeMillis().toString())
             .putBoolean("is_refreshing", true)
+            .putInt("current_day_index", 0)
             .apply()
         
         val appWidgetManager = AppWidgetManager.getInstance(context)
@@ -187,12 +234,14 @@ class ScheduleRemoteViewsFactory(private val context: Context) : RemoteViewsServ
         lessons.clear()
         val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
         val allDaysData = prefs.getString("all_days_data", "[]") ?: "[]"
+        val currentDayIndex = prefs.getInt("current_day_index", 0)
         
         try {
             val daysArray = JSONArray(allDaysData)
             if (daysArray.length() == 0) return
             
-            val currentDay = daysArray.getJSONObject(0)
+            val dayIndex = currentDayIndex.coerceIn(0, daysArray.length() - 1)
+            val currentDay = daysArray.getJSONObject(dayIndex)
             val lessonsArray = currentDay.optJSONArray("lessons") ?: return
 
             for (i in 0 until lessonsArray.length()) {
