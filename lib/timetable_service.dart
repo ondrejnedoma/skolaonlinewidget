@@ -2,15 +2,57 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class TimetableService {
+  /// Gets the Monday of the week containing the given date
+  static DateTime getMondayOfWeek(DateTime date) {
+    final dayOfWeek = date.weekday; // 1 = Monday, 7 = Sunday
+    final daysFromMonday = dayOfWeek - 1;
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: daysFromMonday));
+  }
+
+  /// Gets the Friday of the week containing the given date
+  static DateTime getFridayOfWeek(DateTime date) {
+    final monday = getMondayOfWeek(date);
+    return monday.add(const Duration(days: 4));
+  }
+
+  /// Formats a date for the API query parameter
+  static String formatDateForApi(DateTime date) {
+    final isoString = date.toIso8601String();
+    // Format: 2025-12-29T00:00:00.000 (URL encoded)
+    return Uri.encodeComponent(isoString.split('.')[0] + '.000');
+  }
+
   /// Fetches the timetable for the given student and school year
+  /// If dateFrom is provided, it fetches for a specific week (Monday to Friday)
   static Future<Map<String, dynamic>?> getTimetable(
     String accessToken,
     String studentId,
-    String schoolYearId,
-  ) async {
+    String schoolYearId, {
+    DateTime? dateFrom,
+  }) async {
+    DateTime monday;
+    DateTime friday;
+
+    if (dateFrom != null) {
+      monday = getMondayOfWeek(dateFrom);
+      friday = getFridayOfWeek(dateFrom);
+    } else {
+      final now = DateTime.now();
+      monday = getMondayOfWeek(now);
+      friday = getFridayOfWeek(now);
+    }
+
+    final dateFromStr = formatDateForApi(monday);
+    final dateToStr = formatDateForApi(friday);
+
     final url = Uri.parse(
       'https://aplikace.skolaonline.cz/solapi/api/v1/timeTable'
-      '?StudentId=$studentId&SchoolYearId=$schoolYearId',
+      '?StudentId=$studentId&SchoolYearId=$schoolYearId'
+      '&DateFrom=$dateFromStr&DateTo=$dateToStr',
     );
     try {
       final response = await http.get(
@@ -146,38 +188,68 @@ class TimetableService {
   }
 
   /// Gets all days with their lessons from the timetable
+  /// Ensures all weekdays (Monday-Friday) are present, even if no data exists
   static List<Map<String, dynamic>> getAllDays(
-    Map<String, dynamic> timetableData,
-  ) {
+    Map<String, dynamic> timetableData, {
+    DateTime? weekDate,
+  }) {
     final days = timetableData['days'] as List<dynamic>?;
-    if (days == null || days.isEmpty) return [];
 
+    // Determine the week to display
+    final baseDate = weekDate ?? DateTime.now();
+    final monday = getMondayOfWeek(baseDate);
+
+    // Create a map of existing days from API response
+    final existingDays = <String, Map<String, dynamic>>{};
+
+    if (days != null) {
+      for (final day in days) {
+        final dateStr = day['date'] as String?;
+        if (dateStr == null) continue;
+
+        final schedules = day['schedules'] as List<dynamic>?;
+        final lessons = schedules != null
+            ? schedules
+                  .map((schedule) => Map<String, dynamic>.from(schedule))
+                  .toList()
+            : <Map<String, dynamic>>[];
+
+        // Sort by begin time
+        lessons.sort((a, b) {
+          final aTime = a['beginTime'] as String? ?? '';
+          final bTime = b['beginTime'] as String? ?? '';
+          return aTime.compareTo(bTime);
+        });
+
+        // Extract just the date part (YYYY-MM-DD)
+        final datePart = dateStr.split('T')[0];
+        existingDays[datePart] = {
+          'date': dateStr,
+          'dateLabel': _formatDateLabel(dateStr),
+          'lessons': lessons,
+        };
+      }
+    }
+
+    // Ensure all weekdays (Monday to Friday) are present
     final result = <Map<String, dynamic>>[];
+    for (int i = 0; i < 5; i++) {
+      final currentDay = monday.add(Duration(days: i));
+      final dateStr =
+          '${currentDay.year}-${currentDay.month.toString().padLeft(2, '0')}-${currentDay.day.toString().padLeft(2, '0')}';
+      final fullDateStr = '${dateStr}T00:00:00';
 
-    for (final day in days) {
-      final dateStr = day['date'] as String?;
-      if (dateStr == null) continue;
-
-      final schedules = day['schedules'] as List<dynamic>?;
-      if (schedules == null) continue;
-
-      // Collect all lessons
-      final lessons = schedules
-          .map((schedule) => Map<String, dynamic>.from(schedule))
-          .toList();
-
-      // Sort by begin time
-      lessons.sort((a, b) {
-        final aTime = a['beginTime'] as String? ?? '';
-        final bTime = b['beginTime'] as String? ?? '';
-        return aTime.compareTo(bTime);
-      });
-
-      result.add({
-        'date': dateStr,
-        'dateLabel': _formatDateLabel(dateStr),
-        'lessons': lessons,
-      });
+      if (existingDays.containsKey(dateStr)) {
+        result.add(existingDays[dateStr]!);
+      } else {
+        // No data for this day - it's a free day
+        result.add({
+          'date': fullDateStr,
+          'dateLabel': _formatDateLabel(fullDateStr),
+          'lessons': <Map<String, dynamic>>[],
+          'isFreeDay': true,
+        });
+      }
     }
 
     return result;

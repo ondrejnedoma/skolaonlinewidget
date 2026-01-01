@@ -69,15 +69,21 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
                         val currentDay = daysArray.getJSONObject(dayIndex)
                         val dateLabel = currentDay.optString("dateLabel", "?")
                         val lessons = currentDay.optJSONArray("lessons") ?: JSONArray()
+                        val isFreeDay = currentDay.optBoolean("isFreeDay", false)
 
                         // Display formatted date label
                         views.setTextViewText(R.id.widget_title, dateLabel)
 
-                        // Show/hide chevrons based on position
-                        views.setViewVisibility(R.id.btn_prev_day, if (dayIndex > 0) View.VISIBLE else View.INVISIBLE)
-                        views.setViewVisibility(R.id.btn_next_day, if (dayIndex < totalDays - 1) View.VISIBLE else View.INVISIBLE)
+                        // Always show chevrons to allow week navigation
+                        views.setViewVisibility(R.id.btn_prev_day, View.VISIBLE)
+                        views.setViewVisibility(R.id.btn_next_day, View.VISIBLE)
 
-                        if (lessons.length() == 0) {
+                        if (lessons.length() == 0 && isFreeDay) {
+                            // Free day - show celebration emoji
+                            views.setViewVisibility(R.id.widget_list, View.GONE)
+                            views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
+                            views.setTextViewText(R.id.widget_empty, "🎉\n\nPro tento den nemáte žádnou agendu")
+                        } else if (lessons.length() == 0) {
                             views.setViewVisibility(R.id.widget_list, View.GONE)
                             views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
                         } else {
@@ -148,19 +154,43 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
             
             if (totalDays > 0) {
                 val currentIndex = prefs.getInt("current_day_index", 0)
-                val newIndex = (currentIndex + direction).coerceIn(0, totalDays - 1)
+                val newIndex = currentIndex + direction
                 
-                prefs.edit()
-                    .putInt("current_day_index", newIndex)
-                    .apply()
-                
-                // Update all widgets
-                val appWidgetManager = AppWidgetManager.getInstance(context)
-                val widgetIds = appWidgetManager.getAppWidgetIds(
-                    ComponentName(context, ScheduleWidgetProvider::class.java)
-                )
-                for (id in widgetIds) {
-                    updateAppWidget(context, appWidgetManager, id)
+                // Check if we're navigating to previous week (before Monday) or next week (after Friday)
+                if (newIndex < 0 || newIndex >= totalDays) {
+                    // Request a week change and refresh
+                    prefs.edit()
+                        .putString("week_navigation_direction", if (direction < 0) "previous" else "next")
+                        .putString("refresh_requested", System.currentTimeMillis().toString())
+                        .putBoolean("is_refreshing", true)
+                        .apply()
+                    
+                    // Trigger refresh which will fetch new week
+                    val intent = Intent(context, WidgetRefreshReceiver::class.java)
+                    context.sendBroadcast(intent)
+                    
+                    // Update widgets to show loading state
+                    val appWidgetManager = AppWidgetManager.getInstance(context)
+                    val widgetIds = appWidgetManager.getAppWidgetIds(
+                        ComponentName(context, ScheduleWidgetProvider::class.java)
+                    )
+                    for (id in widgetIds) {
+                        updateAppWidget(context, appWidgetManager, id)
+                    }
+                } else {
+                    // Normal navigation within current week
+                    prefs.edit()
+                        .putInt("current_day_index", newIndex)
+                        .apply()
+                    
+                    // Update all widgets
+                    val appWidgetManager = AppWidgetManager.getInstance(context)
+                    val widgetIds = appWidgetManager.getAppWidgetIds(
+                        ComponentName(context, ScheduleWidgetProvider::class.java)
+                    )
+                    for (id in widgetIds) {
+                        updateAppWidget(context, appWidgetManager, id)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -174,6 +204,8 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
             .putString("refresh_requested", System.currentTimeMillis().toString())
             .putBoolean("is_refreshing", true)
             .putInt("current_day_index", 0)
+            .putInt("current_week_offset", 0) // Reset to current week on manual refresh
+            .remove("week_navigation_direction")
             .apply()
         
         val appWidgetManager = AppWidgetManager.getInstance(context)

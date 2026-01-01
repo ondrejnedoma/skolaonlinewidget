@@ -47,14 +47,16 @@ class HomeWidgetService {
         return false;
       }
 
-      // Get all days with lessons
+      // Get all days with lessons (includes all weekdays Mon-Fri)
       final allDays = TimetableService.getAllDays(timetable);
 
       final daysData = allDays.map((day) {
         final lessons = day['lessons'] as List<Map<String, dynamic>>;
+        final isFreeDay = day['isFreeDay'] as bool? ?? false;
         return {
           'date': day['date'],
           'dateLabel': day['dateLabel'],
+          'isFreeDay': isFreeDay,
           'lessons': lessons.map((lesson) {
             return {
               'lessonNum': TimetableService.getLessonNumber(lesson),
