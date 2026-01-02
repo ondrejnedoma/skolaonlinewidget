@@ -200,10 +200,10 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
 
     private fun triggerRefresh(context: Context) {
         val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+        
         prefs.edit()
             .putString("refresh_requested", System.currentTimeMillis().toString())
             .putBoolean("is_refreshing", true)
-            .putInt("current_day_index", 0)
             .putInt("current_week_offset", 0) // Reset to current week on manual refresh
             .remove("week_navigation_direction")
             .apply()

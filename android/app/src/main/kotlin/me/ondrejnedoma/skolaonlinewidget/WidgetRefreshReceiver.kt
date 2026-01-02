@@ -78,16 +78,23 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             val weekNavDirection = widgetPrefs.getString("week_navigation_direction", null)
             val currentWeekOffset = widgetPrefs.getInt("current_week_offset", 0)
             
-            val newWeekOffset = when (weekNavDirection) {
+            var newWeekOffset = when (weekNavDirection) {
                 "previous" -> currentWeekOffset - 1
                 "next" -> currentWeekOffset + 1
                 else -> currentWeekOffset
             }
             
-            // Calculate Monday and Friday of the target week
+            // On weekends (Saturday/Sunday), if we're at week offset 0, show next week instead
             val now = Calendar.getInstance()
-            now.add(Calendar.WEEK_OF_YEAR, newWeekOffset)
-            val monday = getMondayOfWeek(now)
+            val dayOfWeek = now.get(Calendar.DAY_OF_WEEK)
+            if (newWeekOffset == 0 && (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY)) {
+                newWeekOffset = 1
+            }
+            
+            // Calculate Monday and Friday of the target week
+            val targetDate = Calendar.getInstance()
+            targetDate.add(Calendar.WEEK_OF_YEAR, newWeekOffset)
+            val monday = getMondayOfWeek(targetDate)
             val friday = getFridayOfWeek(monday)
             
             val accessToken = getAccessToken(context, refreshToken)
@@ -122,7 +129,19 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             val currentDayIndex = when (weekNavDirection) {
                 "previous" -> 4 // Show Friday of previous week
                 "next" -> 0 // Show Monday of next week
-                else -> 0 // Default to Monday
+                else -> {
+                    // Calculate today's day index (0=Monday, 1=Tuesday, ..., 4=Friday)
+                    val calendar = Calendar.getInstance()
+                    val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                    when (dayOfWeek) {
+                        Calendar.MONDAY -> 0
+                        Calendar.TUESDAY -> 1
+                        Calendar.WEDNESDAY -> 2
+                        Calendar.THURSDAY -> 3
+                        Calendar.FRIDAY -> 4
+                        else -> 0
+                    }
+                }
             }
             
             widgetPrefs.edit()
